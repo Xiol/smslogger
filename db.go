@@ -40,6 +40,8 @@ func InitDB() *gorm.DB {
 	}
 
 	db.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&Sms{})
+	db.DB().SetMaxIdleConns(0)
+	db.DB().SetMaxOpenConns(50)
 
 	return &db
 }

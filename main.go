@@ -20,11 +20,13 @@ func main() {
 	var bind string
 	var port int
 	var logLevel string
+	var assets string
 	var dbDump bool
 
 	flag.BoolVar(&dbDump, "dbdump", false, "Dump database queries")
 	flag.StringVar(&logLevel, "loglevel", "info", "Logging level")
 	flag.StringVar(&bind, "bind", "127.0.0.1", "Bind to this IP address")
+	flag.StringVar(&assets, "assets", "./static", "Path to static assets")
 	flag.IntVar(&port, "port", 9345, "Server on this port")
 	flag.Parse()
 
@@ -42,7 +44,7 @@ func main() {
 
 	log.Warningf("SMS Logger starting up on %s:%d", bind, port)
 
-	engine := InitWeb(logLevel)
+	engine := InitWeb(logLevel, assets)
 	db := InitDB()
 	InitApi(engine, db)
 

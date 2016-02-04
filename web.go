@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func InitWeb(logLevel string) *gin.Engine {
+func InitWeb(logLevel, assets string) *gin.Engine {
 	if logLevel != "debug" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -16,6 +16,7 @@ func InitWeb(logLevel string) *gin.Engine {
 	engine := gin.New()
 	engine.HandleMethodNotAllowed = true
 	engine.Use(gin.Recovery())
+	engine.Static("/static", assets)
 
 	engine.Use(func(c *gin.Context) {
 		start := time.Now()

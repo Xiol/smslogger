@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"fmt"
+	"strconv"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -18,11 +19,62 @@ func InitApi(engine *gin.Engine, db *gorm.DB) *Api {
 	a := &Api{}
 	a.db = db
 
+	engine.LoadHTMLGlob("templates/*")
+
+	engine.GET("/", a.WUI)
 	engine.POST("/sms", a.AddSMS)
 	engine.GET("/sms", a.GetSMS)
 	engine.GET("/search", a.SearchSMS)
 
 	return a
+}
+
+func (a *Api) WUI(c *gin.Context) {
+	smss, err := a.getSms(c)
+	if err != nil {
+		// do what here?
+		c.AbortWithStatus(400)
+	}
+
+	smscount := a.countSms()
+	var start, limit int64
+	var sstart, slimit string
+
+	sstart = c.Query("start")
+	slimit = c.Query("limit")
+
+	if sstart == "" {
+		start = 0
+	} else {
+		start, err = strconv.ParseInt(sstart, 10, 64)
+		if err != nil {
+			stringWebError(c, 400, "start must be an integer")
+			return
+		}
+	}
+
+	if slimit == "" {
+		limit = 50
+	} else {
+		limit, err = strconv.ParseInt(slimit, 10, 64)
+		if err != nil {
+			stringWebError(c, 400, "limit must be an integer")
+			return
+		}
+	}
+
+	morePrev := start > 0
+	moreNext := (start + limit) < int64(smscount)
+
+	log.Debugf("start: %v, limit %v, moreNext: %v, morePrev: %v, smsCount: %d", start, limit, moreNext, morePrev, smscount)
+
+	c.HTML(200, "index.html", gin.H{
+		"SMS":      smss,
+		"Count":    smscount,
+		"MorePrev": morePrev,
+		"MoreNext": moreNext,
+	})
+	return
 }
 
 func (a *Api) AddSMS(c *gin.Context) {
@@ -67,39 +119,19 @@ func (a *Api) AddSMS(c *gin.Context) {
 
 	log.Debugf("Saved to database")
 	c.String(201, "Stored")
-    return
+	return
 }
 
 func (a *Api) GetSMS(c *gin.Context) {
-	log.Debug("Getting entry...")
+	log.Debug("Getting SMS's...")
 
-	start := c.Query("start")
-	limit := c.Query("limit")
-	id := c.Query("id")
-
-	if id != "" {
-		sms := Sms{}
-		a.db.Find(&sms, "id = ?", id)
-		log.Infof("Retrieved SMS with ID %s", id)
-		c.JSON(200, sms)
+	smss, err := a.getSms(c)
+	if err != nil {
+		jsonWebError(c, 400, err.Error())
 		return
 	}
 
-	if start != "" {
-		if limit == "" {
-			limit = "50"
-		}
-
-		smss := make([]*Sms, 0)
-		a.db.Offset(start).Limit(limit).Find(&smss)
-
-		log.Infof("Retrieved %d results, returning up to %s to client from offset %s", len(smss), limit, start)
-
-		c.JSON(200, smss)
-		return
-	}
-
-	jsonWebError(c, 400, "Bad request, missing 'id' or 'start' query")
+	c.JSON(200, smss)
 	return
 }
 
@@ -130,4 +162,43 @@ func (a *Api) SearchSMS(c *gin.Context) {
 
 	c.JSON(200, smss)
 	return
+}
+
+func (a *Api) countSms() int {
+	var count int
+	a.db.Table("sms").Count(&count)
+	return count
+}
+
+func (a *Api) getSms(c *gin.Context) ([]*Sms, error) {
+	start := c.Query("start")
+	limit := c.Query("limit")
+	id := c.Query("id")
+
+	var smss []*Sms
+
+	if id != "" {
+		sms := Sms{}
+		a.db.Find(&sms, "id = ?", id)
+		log.Infof("Retrieved SMS with ID %s", id)
+		smss = make([]*Sms, 1)
+		smss[0] = &sms
+		return smss, nil
+	}
+
+	if start == "" {
+		start = "0"
+	}
+
+	if limit == "" {
+		limit = "50"
+	}
+
+	a.db.Offset(start).Limit(limit).Order("timestamp desc").Find(&smss)
+
+	log.Infof("Retrieved %d results, returning up to %s to client from offset %s", len(smss), limit, start)
+
+	return smss, nil
+
+	return nil, fmt.Errorf("Bad request, missing 'id' or 'start' query")
 }
