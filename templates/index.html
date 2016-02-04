@@ -30,7 +30,7 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="#">SMS Log</a>
+          <a class="navbar-brand" href="/">SMS Log</a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
@@ -51,15 +51,15 @@
                 <nav>
                  <ul class="pager">
                     {{ if .MorePrev }}
-                    <li class="previous"><a href="#"><span aria-hidden="true">&larr;</span> Older</a></li>
+                    <li class="previous"><a href="/?start={{ .StartPrev }}&limit={{ .Limit }}"><span aria-hidden="true">&larr;</span> Newer</a></li>
                     {{ else }}
-                    <li class="previous disabled"><a href="#"><span aria-hidden="true">&larr;</span> Older</a></li>
+                    <li class="previous disabled"><a href="#"><span aria-hidden="true">&larr;</span> Newer</a></li>
                     {{ end }}
 
                     {{ if .MoreNext }}
-                    <li class="next"><a href="#">Newer <span aria-hidden="true">&rarr;</span></a></li>
+                    <li class="next"><a href="/?start={{ .StartNext }}&limit={{ .Limit }}">Older <span aria-hidden="true">&rarr;</span></a></li>
                     {{ else }}
-                    <li class="next disabled"><a href="#">Newer <span aria-hidden="true">&rarr;</span></a></li>
+                    <li class="next disabled"><a href="#">Older <span aria-hidden="true">&rarr;</span></a></li>
                     {{ end }}
                   </ul>
                 </nav>

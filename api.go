@@ -69,10 +69,13 @@ func (a *Api) WUI(c *gin.Context) {
 	log.Debugf("start: %v, limit %v, moreNext: %v, morePrev: %v, smsCount: %d", start, limit, moreNext, morePrev, smscount)
 
 	c.HTML(200, "index.html", gin.H{
-		"SMS":      smss,
-		"Count":    smscount,
-		"MorePrev": morePrev,
-		"MoreNext": moreNext,
+		"SMS":       smss,
+		"Count":     smscount,
+		"MorePrev":  morePrev,
+		"MoreNext":  moreNext,
+		"Limit":     limit,
+		"StartNext": start + limit,
+		"StartPrev": start - limit,
 	})
 	return
 }
