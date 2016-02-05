@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/csv"
 	"fmt"
 	"html/template"
+	"io"
 	"strconv"
+	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -26,6 +30,8 @@ func InitApi(engine *gin.Engine, db *gorm.DB) *Api {
 	engine.POST("/sms", a.AddSMS)
 	engine.GET("/sms", a.GetSMS)
 	engine.GET("/search", a.SearchSMS)
+	engine.GET("/export", a.ExportUI)
+	engine.GET("/export/do", a.DoExport)
 
 	return a
 }
@@ -86,6 +92,57 @@ func (a *Api) WUI(c *gin.Context) {
 		"Query":     template.URL(q),
 	})
 	return
+}
+
+func (a *Api) ExportUI(c *gin.Context) {
+	c.HTML(200, "export.tmpl", gin.H{"ExportPage": true})
+	return
+}
+
+func (a *Api) DoExport(c *gin.Context) {
+	sto := c.Query("to")
+	sfrom := c.Query("from")
+	q := c.Query("q")
+
+	log.Debugf("Export request: From: %s, To: %s, Query: %s", sfrom, sto, q)
+
+	var err1, err2 error
+	var to, from time.Time
+	if sto == "" {
+		to = time.Time{}
+	} else {
+		to, err1 = time.Parse("2006-01-02", sto)
+	}
+
+	if sfrom != "" {
+		from, err2 = time.Parse("2006-01-02", sfrom)
+	} else {
+		from = time.Time{}
+	}
+
+	if err1 != nil || err2 != nil {
+		stringWebError(c, 400, "Incorrect date format, must be YYYY-MM-DD. %s %s", err1, err2)
+		return
+	}
+
+	buf := bytes.Buffer{}
+	a.export(&buf, to, from, q)
+
+	var qs, tos, froms string
+	if q != "" {
+		qs = fmt.Sprintf("_%s", strings.Replace(q, " ", "_", -1))
+	}
+	if to.IsZero() {
+		tos = time.Now().Format("2006-01-02")
+	} else {
+		tos = sto
+	}
+	if !from.IsZero() {
+		froms = fmt.Sprintf("%s_", sfrom)
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=\"sms-%s%s%s.csv\"", froms, tos, qs))
+	c.Data(200, "text/csv; charset=utf-8", buf.Bytes())
 }
 
 func (a *Api) AddSMS(c *gin.Context) {
@@ -219,4 +276,41 @@ func (a *Api) getSms(c *gin.Context) ([]*Sms, error) {
 	log.Infof("Retrieved %d results, returning up to %s to client from offset %s", len(smss), limit, start)
 
 	return smss, nil
+}
+
+func (a *Api) export(out io.Writer, from, to time.Time, query string) error {
+	w := csv.NewWriter(out)
+
+	if to.IsZero() && !from.IsZero() {
+		to = time.Now()
+	}
+
+	var smss []*Sms
+
+	if query != "" {
+		if !from.IsZero() {
+			a.db.Where("timestamp < ? AND timestamp > ? AND message LIKE ?", from, to, fmt.Sprintf("%% %s %%", query)).Find(&smss)
+		} else {
+			a.db.Where("message LIKE ?", fmt.Sprintf("%% %s %%", query)).Find(&smss)
+		}
+	} else {
+		if !from.IsZero() {
+			a.db.Where("timestamp < ? AND timestamp > ?", from, to).Find(&smss)
+		} else {
+			a.db.Find(&smss)
+		}
+	}
+
+	record := make([]string, 3)
+	for i := range smss {
+		record[0] = smss[i].Timestamp.Format("2006-01-02 15:04")
+		record[1] = smss[i].From
+		record[2] = smss[i].Message
+		err := w.Write(record)
+		if err != nil {
+			return err
+		}
+	}
+	w.Flush()
+	return nil
 }

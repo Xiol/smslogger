@@ -1,0 +1,47 @@
+{{ template "header" . }}
+<!-- CONTENT -->
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-6 col-md-offset-3">
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <p>This form allows you to export messages in CSV format, which can then be opened in your favourite spreadsheet program.</p>
+                    <p>All fields are optional. Leaving both To and From fields blank will result in a complete export, which may take some time.</p>
+                    <br>
+                    <form class="form-horizontal" id="exportform" method="get" action="/export/do">
+                        <div class="form-group">
+                            <label for="from" class="col-sm-3 control-label">From Date</label>
+                            <div class="col-sm-6">
+                                <input type="text" class="form-control" id="from" placeholder="YYYY-MM-DD" name="from">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="to" class="col-sm-3 control-label">To Date</label>
+                            <div class="col-sm-6">
+                                <input type="text" class="form-control" id="to" placeholder="YYYY-MM-DD" name="to">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="query" class="col-sm-3 control-label">Query</label>
+                            <div class="col-sm-6">
+                                <input type="text" class="form-control" id="query" name="q">
+                            </div>
+                            <div class="col-sm-1">
+                                <span class="glyphicon glyphicon-question-sign" aria-hidden="true"
+                                    data-toggle="tooltip" data-placement="right" data-container="body"
+                                     title="Only export messages that contain this text."></span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-sm-4 col-sm-offset-4">
+                                <button type="submit" class="btn btn-lg btn-block btn-primary text-center" form="exportform"><span class="                                glyphicon glyphicon-download-alt" aria-hidden="true"></span> Export</button>
+                            </div>
+                        </div>
+                    </form>                
+                </div> 
+            </div>
+        </div>
+    </div>
+</div>
+<!-- END CONTENT -->
+{{ template "footer" . }}
