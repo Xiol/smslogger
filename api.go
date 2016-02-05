@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"fmt"
+	"html/template"
 	"strconv"
 	"time"
 
@@ -36,9 +37,11 @@ func (a *Api) WUI(c *gin.Context) {
 		c.AbortWithStatus(400)
 	}
 
-	smscount := a.countSms()
 	var start, limit int64
-	var sstart, slimit string
+	var sstart, slimit, q string
+	q = c.Query("q")
+
+	smscount := a.countSms(q)
 
 	sstart = c.Query("start")
 	slimit = c.Query("limit")
@@ -66,9 +69,13 @@ func (a *Api) WUI(c *gin.Context) {
 	morePrev := start > 0
 	moreNext := (start + limit) < int64(smscount)
 
+	if q != "" {
+		q = fmt.Sprintf("&q=%s", template.URLQueryEscaper(q))
+	}
+
 	log.Debugf("start: %v, limit %v, moreNext: %v, morePrev: %v, smsCount: %d", start, limit, moreNext, morePrev, smscount)
 
-	c.HTML(200, "index.html", gin.H{
+	c.HTML(200, "index.tmpl", gin.H{
 		"SMS":       smss,
 		"Count":     smscount,
 		"MorePrev":  morePrev,
@@ -76,6 +83,7 @@ func (a *Api) WUI(c *gin.Context) {
 		"Limit":     limit,
 		"StartNext": start + limit,
 		"StartPrev": start - limit,
+		"Query":     template.URL(q),
 	})
 	return
 }
@@ -159,7 +167,7 @@ func (a *Api) SearchSMS(c *gin.Context) {
 	}
 
 	smss := make([]*Sms, 0)
-	a.db.Offset(start).Limit(limit).Where("message LIKE ?", fmt.Sprintf("%%%s%%", query)).Find(&smss)
+	a.db.Offset(start).Limit(limit).Where("message LIKE ?", fmt.Sprintf("%% %s %%", query)).Find(&smss)
 
 	log.Infof("Search for '%s' returned %d results, returning up to %s to client from offset %s", query, len(smss), limit, start)
 
@@ -167,9 +175,13 @@ func (a *Api) SearchSMS(c *gin.Context) {
 	return
 }
 
-func (a *Api) countSms() int {
+func (a *Api) countSms(q string) int {
 	var count int
-	a.db.Table("sms").Count(&count)
+	if q == "" {
+		a.db.Table("sms").Count(&count)
+	} else {
+		a.db.Table("sms").Where("message LIKE ?", fmt.Sprintf("%% %s %%", q)).Count(&count)
+	}
 	return count
 }
 
@@ -177,6 +189,7 @@ func (a *Api) getSms(c *gin.Context) ([]*Sms, error) {
 	start := c.Query("start")
 	limit := c.Query("limit")
 	id := c.Query("id")
+	q := c.Query("q")
 
 	var smss []*Sms
 
@@ -197,11 +210,13 @@ func (a *Api) getSms(c *gin.Context) ([]*Sms, error) {
 		limit = "50"
 	}
 
-	a.db.Offset(start).Limit(limit).Order("timestamp desc").Find(&smss)
+	if q != "" {
+		a.db.Offset(start).Limit(limit).Order("timestamp desc").Where("message LIKE ?", fmt.Sprintf("%% %s %%", q)).Find(&smss)
+	} else {
+		a.db.Offset(start).Limit(limit).Order("timestamp desc").Find(&smss)
+	}
 
 	log.Infof("Retrieved %d results, returning up to %s to client from offset %s", len(smss), limit, start)
 
 	return smss, nil
-
-	return nil, fmt.Errorf("Bad request, missing 'id' or 'start' query")
 }
