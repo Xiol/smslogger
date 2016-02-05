@@ -15,6 +15,7 @@ func InitWeb(logLevel, assets string) *gin.Engine {
 
 	engine := gin.New()
 	engine.HandleMethodNotAllowed = true
+	engine.RedirectTrailingSlash = true
 	engine.Use(gin.Recovery())
 	engine.Static("/static", assets)
 
