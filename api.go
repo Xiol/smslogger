@@ -238,7 +238,7 @@ func (a *Api) SearchSMS(c *gin.Context) {
 	}
 
 	smss := make([]*Sms, 0)
-	a.db.Offset(start).Limit(limit).Where("message LIKE ?", fmt.Sprintf("%% %s %%", query)).Find(&smss)
+	a.db.Offset(start).Limit(limit).Where("message ILIKE ?", fmt.Sprintf("%% %s %%", query)).Find(&smss)
 
 	log.Infof("Search for '%s' returned %d results, returning up to %s to client from offset %s", query, len(smss), limit, start)
 
@@ -251,7 +251,7 @@ func (a *Api) countSms(q string) int {
 	if q == "" {
 		a.db.Table("sms").Count(&count)
 	} else {
-		a.db.Table("sms").Where("message LIKE ?", fmt.Sprintf("%% %s %%", q)).Count(&count)
+		a.db.Table("sms").Where("message ILIKE ?", fmt.Sprintf("%% %s %%", q)).Count(&count)
 	}
 	return count
 }
@@ -295,7 +295,7 @@ func (a *Api) getSms(c *gin.Context) ([]*Sms, int) {
 	}
 
 	if q != "" {
-		if a.db.Offset(start).Limit(limit).Order("timestamp desc").Where("message LIKE ?", fmt.Sprintf("%% %s %%", q)).Find(&smss).RecordNotFound() {
+		if a.db.Offset(start).Limit(limit).Order("timestamp desc").Where("message ILIKE ?", fmt.Sprintf("%% %s %%", q)).Find(&smss).RecordNotFound() {
 			return nil, 404
 		}
 	} else {
@@ -324,9 +324,9 @@ func (a *Api) export(out io.Writer, from, to time.Time, query string) error {
 
 	if query != "" {
 		if !from.IsZero() {
-			a.db.Where("timestamp < ? AND timestamp > ? AND message LIKE ?", from, to, fmt.Sprintf("%% %s %%", query)).Find(&smss)
+			a.db.Where("timestamp < ? AND timestamp > ? AND message ILIKE ?", from, to, fmt.Sprintf("%% %s %%", query)).Find(&smss)
 		} else {
-			a.db.Where("message LIKE ?", fmt.Sprintf("%% %s %%", query)).Find(&smss)
+			a.db.Where("message ILIKE ?", fmt.Sprintf("%% %s %%", query)).Find(&smss)
 		}
 	} else {
 		if !from.IsZero() {
