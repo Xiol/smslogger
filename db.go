@@ -6,16 +6,16 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
+	_ "github.com/lib/pq"
 )
 
 type Sms struct {
 	ID        int
 	Timestamp time.Time
 	From      string
-	Message   string
-	Hash      string `sql:"unique_index"`
+	Message   string `sql:"type:text"`
+	Hash      string `sql:"type:char(64);unique_index"`
 }
 
 func InitDB() *gorm.DB {
@@ -34,14 +34,12 @@ func InitDB() *gorm.DB {
 		host = "127.0.0.1"
 	}
 
-	db, err := gorm.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?charset=utf8&parseTime=True&loc=Local", user, pass, host, database))
+	db, err := gorm.Open("postgres", fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable", user, pass, database, host))
 	if err != nil {
 		log.Fatalf("Error connecting to database: %s", err)
 	}
 
-	db.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&Sms{})
-	db.DB().SetMaxIdleConns(0)
-	db.DB().SetMaxOpenConns(50)
+	db.AutoMigrate(&Sms{})
 
 	return &db
 }

@@ -37,12 +37,19 @@ func InitApi(engine *gin.Engine, db *gorm.DB) *Api {
 }
 
 func (a *Api) WUI(c *gin.Context) {
-	smss, err := a.getSms(c)
-	if err != nil {
-		// do what here?
-		c.AbortWithStatus(400)
+	smss, errcode := a.getSms(c)
+	if errcode > 0 {
+		if errcode == 404 {
+			c.HTML(404, "index.tmpl", gin.H{
+				"NotFound": true,
+			})
+			return
+		} else {
+			c.AbortWithStatus(errcode)
+		}
 	}
 
+	var err error
 	var start, limit int64
 	var sstart, slimit, q string
 	q = c.Query("q")
@@ -178,12 +185,15 @@ func (a *Api) AddSMS(c *gin.Context) {
 		Hash:      fmt.Sprintf("%x", hasher.Sum(nil)),
 	}
 
-	a.db.Save(sms)
+	tx := a.db.Begin()
 
-	if a.db.NewRecord(sms) {
-		c.String(500, "Error: Failed to store")
+	if err := tx.Create(sms).Error; err != nil {
+		tx.Rollback()
+		stringWebError(c, 500, "Error creating entry: %s", err)
 		return
 	}
+
+	tx.Commit()
 
 	log.Debugf("Saved to database")
 	c.String(201, "Stored")
@@ -193,9 +203,13 @@ func (a *Api) AddSMS(c *gin.Context) {
 func (a *Api) GetSMS(c *gin.Context) {
 	log.Debug("Getting SMS's...")
 
-	smss, err := a.getSms(c)
-	if err != nil {
-		jsonWebError(c, 400, err.Error())
+	smss, errcode := a.getSms(c)
+	if errcode > 0 {
+		if errcode == 404 {
+			jsonWebError(c, errcode, "Record not found.")
+		} else {
+			jsonWebError(c, errcode, "Error, please see logs.")
+		}
 		return
 	}
 
@@ -242,21 +256,34 @@ func (a *Api) countSms(q string) int {
 	return count
 }
 
-func (a *Api) getSms(c *gin.Context) ([]*Sms, error) {
+func (a *Api) getSms(c *gin.Context) ([]*Sms, int) {
 	start := c.Query("start")
 	limit := c.Query("limit")
 	id := c.Query("id")
 	q := c.Query("q")
+	hash := c.Query("hash")
 
 	var smss []*Sms
 
-	if id != "" {
+	if id != "" || hash != "" {
 		sms := Sms{}
-		a.db.Find(&sms, "id = ?", id)
+
+		if id != "" {
+			if a.db.Find(&sms, "id = ?", id).RecordNotFound() {
+				return nil, 404
+			}
+		}
+
+		if hash != "" {
+			if a.db.Find(&sms, "hash = ?", hash).RecordNotFound() {
+				return nil, 404
+			}
+		}
+
 		log.Infof("Retrieved SMS with ID %s", id)
 		smss = make([]*Sms, 1)
 		smss[0] = &sms
-		return smss, nil
+		return smss, 0
 	}
 
 	if start == "" {
@@ -268,14 +295,22 @@ func (a *Api) getSms(c *gin.Context) ([]*Sms, error) {
 	}
 
 	if q != "" {
-		a.db.Offset(start).Limit(limit).Order("timestamp desc").Where("message LIKE ?", fmt.Sprintf("%% %s %%", q)).Find(&smss)
+		if a.db.Offset(start).Limit(limit).Order("timestamp desc").Where("message LIKE ?", fmt.Sprintf("%% %s %%", q)).Find(&smss).RecordNotFound() {
+			return nil, 404
+		}
 	} else {
-		a.db.Offset(start).Limit(limit).Order("timestamp desc").Find(&smss)
+		if a.db.Offset(start).Limit(limit).Order("timestamp desc").Find(&smss).RecordNotFound() {
+			return nil, 404
+		}
+	}
+
+	if len(smss) == 0 {
+		return nil, 404
 	}
 
 	log.Infof("Retrieved %d results, returning up to %s to client from offset %s", len(smss), limit, start)
 
-	return smss, nil
+	return smss, 0
 }
 
 func (a *Api) export(out io.Writer, from, to time.Time, query string) error {

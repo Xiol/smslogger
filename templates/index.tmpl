@@ -1,32 +1,40 @@
 {{ template "header" . }}
     <!-- CONTENT -->
     <div class="container-fluid">
-        {{ template "navigation" . }}
+        {{ if .NotFound }}
         <div class="row">
             <div class="col-md-10 col-md-offset-1">
-                <div class="table-responsive">
-                    <table id="sms" class="table table-striped table-bordered">
-                    <thead><tr>
-                        <th class="col-md-1">Timestamp</th>
-                        <th>From</th>
-                        <th>Message</th>
-                   </tr></thead>
-                    <tbody>
-                        {{range .SMS}}
-                        <tr>
-                            <td class="col-md-1">
-                                <a href="/?id={{.ID}}">{{.Timestamp.Format "2006-01-02 15:04"}}</a>
-                            </td>
-                            <td>{{.From}}</td>
-                            <td>{{.Message}}</td>
-                        </tr>
-                        {{end}}
-                    </tbody>
-                    </table>
-                </div>
+                <h2 class="text-center">Record(s) not found!</h2>
             </div>
         </div>
-        {{ template "navigation" . }}
+        {{ else }}
+            {{ template "navigation" . }}
+            <div class="row">
+                <div class="col-md-10 col-md-offset-1">
+                    <div class="table-responsive">
+                        <table id="sms" class="table table-striped table-bordered">
+                        <thead><tr>
+                            <th class="col-md-1">Timestamp</th>
+                            <th>From</th>
+                            <th>Message</th>
+                       </tr></thead>
+                        <tbody>
+                            {{range .SMS}}
+                            <tr>
+                                <td class="col-md-1">
+                                    <a href="/?id={{.ID}}">{{.Timestamp.Format "2006-01-02 15:04"}}</a>
+                                </td>
+                                <td>{{.From}}</td>
+                                <td>{{.Message}}</td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {{ template "navigation" . }}
+        {{ end }}
     </div>
     <!-- END CONTENT -->
 {{ template "footer" . }}

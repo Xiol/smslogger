@@ -46,6 +46,11 @@ func main() {
 
 	engine := InitWeb(logLevel, assets)
 	db := InitDB()
+
+	if dbDump {
+		db.LogMode(true)
+	}
+
 	InitApi(engine, db)
 
 	defer func() {
