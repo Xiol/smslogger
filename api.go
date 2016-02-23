@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/csv"
 	"fmt"
 	"html/template"
@@ -155,15 +156,23 @@ func (a *Api) DoExport(c *gin.Context) {
 func (a *Api) AddSMS(c *gin.Context) {
 	log.Debug("Adding entry...")
 
-	message := c.PostForm("message")
+	in_message := c.PostForm("message")
 	mtime := c.PostForm("time")
 	mdate := c.PostForm("date")
 	from := c.PostForm("from")
 
-	if message == "" {
+	if in_message == "" {
 		stringWebError(c, 400, "Message data missing")
 		return
 	}
+
+	bmessage, err := base64.StdEncoding.DecodeString(in_message)
+	if err != nil {
+		stringWebError(c, 400, "Could not base64 decode message field: %s", err)
+		return
+	}
+
+	message := string(bmessage)
 
 	log.Infof("SMS Received: Time: %s, Date: %s, From: %s, Message: %s", mtime, mdate, from, message)
 
