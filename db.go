@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"os"
 	"time"
 
@@ -11,11 +12,12 @@ import (
 )
 
 type Sms struct {
-	ID        int
-	Timestamp time.Time
-	From      string
-	Message   string `sql:"type:text"`
-	Hash      string `sql:"type:char(64);unique_index"`
+	ID          int
+	Timestamp   time.Time
+	From        string
+	Message     string        `sql:"type:text"`
+	MessageHTML template.HTML `sql:"-" json:"-"`
+	Hash        string        `sql:"type:char(64);unique_index"`
 }
 
 func InitDB() *gorm.DB {

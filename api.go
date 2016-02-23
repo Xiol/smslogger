@@ -89,6 +89,13 @@ func (a *Api) WUI(c *gin.Context) {
 
 	log.Debugf("start: %v, limit %v, moreNext: %v, morePrev: %v, smsCount: %d", start, limit, moreNext, morePrev, smscount)
 
+	for i := range smss {
+		msg := smss[i].Message
+		msg = template.HTMLEscapeString(msg)
+		msg = strings.Replace(msg, "\n", "<br>", -1)
+		smss[i].MessageHTML = template.HTML(msg)
+	}
+
 	c.HTML(200, "index.tmpl", gin.H{
 		"SMS":       smss,
 		"Count":     smscount,
