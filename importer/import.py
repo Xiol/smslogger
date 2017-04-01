@@ -12,6 +12,7 @@ import csv
 import requests
 import time
 import hashlib
+import base64
 
 with open('import.csv', 'r') as fh:
     smsreader = csv.reader(fh)
@@ -36,7 +37,7 @@ with open('import.csv', 'r') as fh:
                 "time": timestamp,
                 "date": date,
                 "from": f,
-                "message": message,
+                "message": base64.b64encode(message),
             }
             resp = requests.post(URL+"/sms", payload)
             print "{}: {}".format(resp.status_code, message)
