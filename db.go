@@ -43,5 +43,5 @@ func InitDB() *gorm.DB {
 
 	db.AutoMigrate(&Sms{})
 
-	return &db
+	return db
 }
