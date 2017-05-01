@@ -7,8 +7,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
-	_ "github.com/lib/pq"
 )
 
 type Sms struct {
@@ -36,7 +36,7 @@ func InitDB() *gorm.DB {
 		host = "127.0.0.1"
 	}
 
-	db, err := gorm.Open("postgres", fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=disable", user, pass, database, host))
+	db, err := gorm.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?parseTime=True&loc=Local", user, pass, host, database))
 	if err != nil {
 		log.Fatalf("Error connecting to database: %s", err)
 	}
